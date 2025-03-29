@@ -31,11 +31,11 @@ git clone https://github.com/yourusername/MediBlock.git
 cd MediBlock
 ```
 
-2. Generate the Fabric configuration and crypto materials:
+2. Generate the Fabric certificates and configuration:
 
 ```bash
-chmod +x scripts/generate-fabric-config.sh
-./scripts/generate-fabric-config.sh
+chmod +x scripts/generate-fabric-certs.sh
+./scripts/generate-fabric-certs.sh
 ```
 
 3. Start the local blockchain network and services:
@@ -74,6 +74,25 @@ npm run dev
 ```
 
 The frontend will be available at http://localhost:3000
+
+### Kubernetes Deployment
+
+For deploying to Kubernetes:
+
+1. Create the namespace and apply certificates:
+
+```bash
+kubectl apply -f k8s/manifests/00-namespace.yaml
+./scripts/update-fabric-certs.sh
+```
+
+2. Apply the remaining manifests:
+
+```bash
+kubectl apply -f k8s/manifests/
+```
+
+For more details on certificate management, see [Certificate Management](docs/CERTIFICATE_MANAGEMENT.md).
 
 ## Development Workflow
 

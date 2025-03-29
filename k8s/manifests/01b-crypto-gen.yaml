@@ -1,0 +1,79 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: crypto-gen
+  namespace: mediblock
+spec:
+  ttlSecondsAfterFinished: 100
+  template:
+    spec:
+      containers:
+      - name: crypto-gen
+        image: alpine:latest
+        command: ["sh", "-c"]
+        args:
+        - |
+          set -e
+          apk add --no-cache openssl
+          
+          mkdir -p /crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/{admincerts,cacerts,keystore,signcerts,tlscacerts}
+          mkdir -p /crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/{admincerts,cacerts,keystore,signcerts,tlscacerts}
+          
+          # Generate CA private key and certificate
+          echo "Generating CA certificates..."
+          openssl ecparam -name prime256v1 -genkey -noout -out /crypto-config/ca.key
+          openssl req -new -x509 -key /crypto-config/ca.key -out /crypto-config/ca.crt -subj "/C=US/ST=CA/L=San Francisco/O=MediBlock/OU=CA/CN=ca.example.com" -days 365
+          
+          # Generate Orderer certificates
+          echo "Generating Orderer certificates..."
+          openssl ecparam -name prime256v1 -genkey -noout -out /crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/keystore/key.pem
+          openssl req -new -key /crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/keystore/key.pem -out /crypto-config/orderer.csr -subj "/C=US/ST=CA/L=San Francisco/O=MediBlock/OU=Orderer/CN=orderer.example.com"
+          openssl x509 -req -in /crypto-config/orderer.csr -CA /crypto-config/ca.crt -CAkey /crypto-config/ca.key -CAcreateserial -out /crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/signcerts/cert.pem -days 365
+          cp /crypto-config/ca.crt /crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/
+          cp /crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/signcerts/cert.pem /crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/admincerts/
+          
+          # Generate Peer certificates
+          echo "Generating Peer certificates..."
+          openssl ecparam -name prime256v1 -genkey -noout -out /crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/keystore/key.pem
+          openssl req -new -key /crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/keystore/key.pem -out /crypto-config/peer.csr -subj "/C=US/ST=CA/L=San Francisco/O=MediBlock/OU=Peer/CN=peer0.org1.example.com"
+          openssl x509 -req -in /crypto-config/peer.csr -CA /crypto-config/ca.crt -CAkey /crypto-config/ca.key -CAcreateserial -out /crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/signcerts/cert.pem -days 365
+          cp /crypto-config/ca.crt /crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/cacerts/
+          cp /crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/signcerts/cert.pem /crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/admincerts/
+          
+          # Create ConfigMaps from generated certificates
+          echo "Creating ConfigMaps..."
+          
+          # Create ConfigMap for orderer certificates
+          kubectl create configmap -n mediblock orderer-msp \
+            --from-file=cacerts-ca.crt=/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/ca.crt \
+            --from-file=keystore-key.pem=/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/keystore/key.pem \
+            --from-file=signcerts-cert.pem=/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/signcerts/cert.pem \
+            --from-file=admincerts-cert.pem=/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/admincerts/cert.pem || true
+          
+          # Create ConfigMap for peer certificates
+          kubectl create configmap -n mediblock peer0-org1-msp \
+            --from-file=cacerts-ca.crt=/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/cacerts/ca.crt \
+            --from-file=keystore-key.pem=/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/keystore/key.pem \
+            --from-file=signcerts-cert.pem=/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/signcerts/cert.pem \
+            --from-file=admincerts-cert.pem=/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/admincerts/cert.pem || true
+          
+          echo "Crypto materials generated successfully."
+        volumeMounts:
+        - name: kubeconfig
+          mountPath: /root/.kube/config
+          subPath: config
+      restartPolicy: Never
+      volumes:
+      - name: kubeconfig
+        secret:
+          secretName: kubeconfig
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kubeconfig
+  namespace: mediblock
+type: Opaque
+data:
+  config: # This needs to be replaced with a base64 encoded kubeconfig file that allows creating ConfigMaps
+    # In a real environment, you would use a service account with appropriate RBAC permissions 

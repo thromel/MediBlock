@@ -1,0 +1,237 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fabric-cert-generation
+  namespace: mediblock
+spec:
+  ttlSecondsAfterFinished: 100
+  template:
+    spec:
+      containers:
+      - name: cert-gen
+        image: alpine:latest
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          set -ex
+          
+          # Install required tools
+          apk add --no-cache openssl bash curl
+
+          # Create directories
+          OUTDIR="/cert-output"
+          mkdir -p $OUTDIR/ca
+          
+          # Create orderer directories
+          mkdir -p $OUTDIR/orderer/msp
+          mkdir -p $OUTDIR/orderer/msp/admincerts
+          mkdir -p $OUTDIR/orderer/msp/cacerts
+          mkdir -p $OUTDIR/orderer/msp/keystore
+          mkdir -p $OUTDIR/orderer/msp/signcerts
+          mkdir -p $OUTDIR/orderer/msp/tlscacerts
+          
+          # Create peer directories
+          mkdir -p $OUTDIR/peer0-org1/msp
+          mkdir -p $OUTDIR/peer0-org1/msp/admincerts
+          mkdir -p $OUTDIR/peer0-org1/msp/cacerts
+          mkdir -p $OUTDIR/peer0-org1/msp/keystore
+          mkdir -p $OUTDIR/peer0-org1/msp/signcerts
+          mkdir -p $OUTDIR/peer0-org1/msp/tlscacerts
+          
+          # Generate OpenSSL configuration file with proper extensions for Fabric
+          cat > $OUTDIR/openssl.cnf << EOF
+          [ req ]
+          default_bits       = 256
+          default_md         = sha256
+          distinguished_name = req_distinguished_name
+          req_extensions     = v3_req
+          prompt             = no
+          
+          [ req_distinguished_name ]
+          C                  = US
+          ST                 = California
+          L                  = San Francisco
+          O                  = MediBlock
+          OU                 = Hyperledger Fabric
+          CN                 = fabric-ca
+          
+          [ v3_req ]
+          keyUsage           = critical, digitalSignature, keyEncipherment, keyCertSign, cRLSign
+          extendedKeyUsage   = serverAuth, clientAuth
+          basicConstraints   = critical, CA:true, pathlen:1
+          subjectKeyIdentifier = hash
+          
+          [ orderer_ext ]
+          keyUsage           = critical, digitalSignature, keyEncipherment
+          extendedKeyUsage   = serverAuth, clientAuth
+          basicConstraints   = critical, CA:false
+          subjectKeyIdentifier = hash
+          authorityKeyIdentifier = keyid:always
+          subjectAltName     = DNS:orderer.mediblock.com, DNS:orderer, DNS:localhost, IP:127.0.0.1
+          
+          [ peer_ext ]
+          keyUsage           = critical, digitalSignature, keyEncipherment
+          extendedKeyUsage   = serverAuth, clientAuth
+          basicConstraints   = critical, CA:false
+          subjectKeyIdentifier = hash
+          authorityKeyIdentifier = keyid:always
+          subjectAltName     = DNS:peer0.org1.mediblock.com, DNS:peer0-org1, DNS:localhost, IP:127.0.0.1
+          
+          [ admin_ext ]
+          keyUsage           = critical, digitalSignature, keyEncipherment
+          extendedKeyUsage   = clientAuth
+          basicConstraints   = critical, CA:false
+          subjectKeyIdentifier = hash
+          authorityKeyIdentifier = keyid:always
+          EOF
+          
+          # 1. Generate Root CA Certificate
+          echo "Generating Root CA certificate..."
+          openssl ecparam -name prime256v1 -genkey -noout -out $OUTDIR/ca/ca.key
+          openssl req -new -x509 -key $OUTDIR/ca/ca.key -out $OUTDIR/ca/ca.crt -days 3650 \
+            -config $OUTDIR/openssl.cnf \
+            -extensions v3_req \
+            -sha256
+          
+          # 2. Generate Orderer certificates
+          echo "Generating Orderer certificates..."
+          openssl ecparam -name prime256v1 -genkey -noout -out $OUTDIR/orderer/msp/keystore/key.pem
+          openssl req -new -key $OUTDIR/orderer/msp/keystore/key.pem -out $OUTDIR/orderer/orderer.csr \
+            -subj "/C=US/ST=California/L=San Francisco/O=MediBlock/OU=Orderer/CN=orderer.mediblock.com" \
+            -config $OUTDIR/openssl.cnf \
+            -sha256
+          
+          openssl x509 -req -in $OUTDIR/orderer/orderer.csr -CA $OUTDIR/ca/ca.crt -CAkey $OUTDIR/ca/ca.key \
+            -CAcreateserial -out $OUTDIR/orderer/msp/signcerts/cert.pem -days 3650 \
+            -extensions orderer_ext -extfile $OUTDIR/openssl.cnf \
+            -sha256
+          
+          # 3. Generate Peer certificates
+          echo "Generating Peer certificates..."
+          openssl ecparam -name prime256v1 -genkey -noout -out $OUTDIR/peer0-org1/msp/keystore/key.pem
+          openssl req -new -key $OUTDIR/peer0-org1/msp/keystore/key.pem -out $OUTDIR/peer0-org1/peer.csr \
+            -subj "/C=US/ST=California/L=San Francisco/O=MediBlock/OU=Peer/CN=peer0.org1.mediblock.com" \
+            -config $OUTDIR/openssl.cnf \
+            -sha256
+          
+          openssl x509 -req -in $OUTDIR/peer0-org1/peer.csr -CA $OUTDIR/ca/ca.crt -CAkey $OUTDIR/ca/ca.key \
+            -CAcreateserial -out $OUTDIR/peer0-org1/msp/signcerts/cert.pem -days 3650 \
+            -extensions peer_ext -extfile $OUTDIR/openssl.cnf \
+            -sha256
+          
+          # 4. Generate Admin certificate
+          echo "Generating Admin certificate..."
+          openssl ecparam -name prime256v1 -genkey -noout -out $OUTDIR/admin.key
+          openssl req -new -key $OUTDIR/admin.key -out $OUTDIR/admin.csr \
+            -subj "/C=US/ST=California/L=San Francisco/O=MediBlock/OU=Admin/CN=admin.mediblock.com" \
+            -config $OUTDIR/openssl.cnf \
+            -sha256
+          
+          openssl x509 -req -in $OUTDIR/admin.csr -CA $OUTDIR/ca/ca.crt -CAkey $OUTDIR/ca/ca.key \
+            -CAcreateserial -out $OUTDIR/admin.crt -days 3650 \
+            -extensions admin_ext -extfile $OUTDIR/openssl.cnf \
+            -sha256
+          
+          # 5. Copy certificates to the appropriate directories
+          cp $OUTDIR/ca/ca.crt $OUTDIR/orderer/msp/cacerts/
+          cp $OUTDIR/ca/ca.crt $OUTDIR/peer0-org1/msp/cacerts/
+          cp $OUTDIR/admin.crt $OUTDIR/orderer/msp/admincerts/admin.crt
+          cp $OUTDIR/admin.crt $OUTDIR/peer0-org1/msp/admincerts/admin.crt
+          
+          # Create MSP config files
+          cat > $OUTDIR/orderer/msp/config.yaml << EOF
+          NodeOUs:
+            Enable: true
+            ClientOUIdentifier:
+              Certificate: cacerts/ca.crt
+              OrganizationalUnitIdentifier: client
+            PeerOUIdentifier:
+              Certificate: cacerts/ca.crt
+              OrganizationalUnitIdentifier: peer
+            AdminOUIdentifier:
+              Certificate: cacerts/ca.crt
+              OrganizationalUnitIdentifier: admin
+            OrdererOUIdentifier:
+              Certificate: cacerts/ca.crt
+              OrganizationalUnitIdentifier: orderer
+          EOF
+          
+          cat > $OUTDIR/peer0-org1/msp/config.yaml << EOF
+          NodeOUs:
+            Enable: true
+            ClientOUIdentifier:
+              Certificate: cacerts/ca.crt
+              OrganizationalUnitIdentifier: client
+            PeerOUIdentifier:
+              Certificate: cacerts/ca.crt
+              OrganizationalUnitIdentifier: peer
+            AdminOUIdentifier:
+              Certificate: cacerts/ca.crt
+              OrganizationalUnitIdentifier: admin
+            OrdererOUIdentifier:
+              Certificate: cacerts/ca.crt
+              OrganizationalUnitIdentifier: orderer
+          EOF
+          
+          # Output details of generated certificates
+          echo "Verifying certificate details:"
+          openssl x509 -in $OUTDIR/ca/ca.crt -text -noout | grep "Signature Algorithm"
+          openssl x509 -in $OUTDIR/orderer/msp/signcerts/cert.pem -text -noout | grep "Signature Algorithm"
+          openssl x509 -in $OUTDIR/peer0-org1/msp/signcerts/cert.pem -text -noout | grep "Signature Algorithm"
+          
+          echo "Certificate generation completed successfully"
+          
+          # Since kubectl might not be available in the container, we'll just copy 
+          # the files to a shared volume that can be used by another process
+          # that has kubectl available
+          echo "Certificate generation completed successfully."
+        volumeMounts:
+        - name: cert-output
+          mountPath: /cert-output
+      volumes:
+      - name: cert-output
+        emptyDir: {}
+      restartPolicy: Never
+      serviceAccountName: fabric-cert-generator
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fabric-cert-generator
+  namespace: mediblock
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: fabric-cert-generator-role
+  namespace: mediblock
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: fabric-cert-generator-rolebinding
+  namespace: mediblock
+subjects:
+- kind: ServiceAccount
+  name: fabric-cert-generator
+  namespace: mediblock
+roleRef:
+  kind: Role
+  name: fabric-cert-generator-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kubeconfig
+  namespace: mediblock
+type: Opaque
+data:
+  # This needs to be replaced with a base64 encoded kubeconfig file
+  # that allows access to create/update configmaps and secrets in the mediblock namespace
+  # In a real environment, you should use the ServiceAccount instead of providing kubeconfig
+  config: "" 
