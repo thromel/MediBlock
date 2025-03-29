@@ -1,0 +1,143 @@
+# Binaries and builds
+/bin/
+/dist/
+/build/
+**/vendor/
+
+# Go specific
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+**/coverage.out
+**/coverage.html
+__debug_bin
+
+# Python specific
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Node.js specific
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.next/
+out/
+.nuxt
+.output
+.vercel
+.vite/
+.env*.local
+*.tsbuildinfo
+.eslintcache
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor and IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+.vs/
+*.code-workspace
+
+# Docker related
+*.env
+.dockerignore
+
+# Hyperledger Fabric specific
+**/crypto-config/
+**/channel-artifacts/
+**/crypto/
+**/wallet/
+**/config/
+**/scripts/fabric-samples
+
+# Dependency directories
+/tmp/
+/.tmp/
+/coverage/
+/.nyc_output/
+
+# Logs
+/logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Local development environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IPFS specific
+.ipfs/
+.ipfs-data/
+/data/ipfs/
+
+# Testing artifacts
+/coverage/
+/.nyc_output/
+
+# Secret files
+*.pem
+*.key
+*.p12
+*.pfx
+*.cer
+*.crt
+*.msp
+*.id
+*.secret
+*.creds
+
+# Cursor specific
+.cursor/ 
