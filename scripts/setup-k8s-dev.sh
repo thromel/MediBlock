@@ -16,7 +16,7 @@ done
 # Start minikube if not running
 if ! minikube status | grep -q "Running"; then
     echo "🚀 Starting minikube..."
-    minikube start --memory=4096 --cpus=2
+    minikube start --memory=3800 --cpus=2
 fi
 
 # Enable ingress addon
