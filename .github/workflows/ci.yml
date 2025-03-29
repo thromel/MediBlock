@@ -2,9 +2,9 @@ name: MediBlock CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
   test-chaincode:
@@ -15,7 +15,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.16'
+          go-version: '1.21'
       - name: Test Chaincode
         run: |
           cd chaincode/ehrmanager
@@ -29,7 +29,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.16'
+          go-version: '1.21'
       - name: Test Go Service
         run: |
           cd go-service
@@ -48,12 +48,29 @@ jobs:
         run: |
           cd python-service
           python -m pip install --upgrade pip
-          pip install pytest
           pip install -r requirements.txt
       - name: Test Python Service
         run: |
           cd python-service
-          pytest
+          python -m unittest test_app.py
+
+  test-nextjs-frontend:
+    name: Test Next.js Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+      - name: Install dependencies
+        run: |
+          cd nextjs-frontend
+          npm ci
+      - name: Run Tests
+        run: |
+          cd nextjs-frontend
+          npm test
 
   lint-frontend:
     name: Lint Next.js Frontend
