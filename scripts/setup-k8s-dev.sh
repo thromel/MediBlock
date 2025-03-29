@@ -45,6 +45,7 @@ echo "📦 Deploying to Kubernetes..."
 # Create namespace and base configs
 kubectl apply -f k8s/manifests/00-namespace.yaml
 kubectl apply -f k8s/manifests/01-configmap.yaml
+kubectl apply -f k8s/manifests/01a-fabric-secrets.yaml
 
 # Deploy Fabric components
 echo "🧩 Deploying Hyperledger Fabric components..."

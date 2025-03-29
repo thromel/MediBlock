@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
       - name: ca-org1
-        image: hyperledger/fabric-ca:2.5
+        image: hyperledger/fabric-ca:latest
         env:
         - name: FABRIC_CA_HOME
           value: /etc/hyperledger/fabric-ca-server
@@ -86,19 +86,12 @@ spec:
       labels:
         app: orderer
     spec:
-      initContainers:
-      - name: generate-genesis
-        image: hyperledger/fabric-tools:2.5
-        command: ["sh", "-c", "configtxgen -profile TwoOrgsOrdererGenesis -channelID system-channel -outputBlock /var/hyperledger/orderer/genesis.block || cp /tmp/genesis.block /var/hyperledger/orderer/genesis.block || echo 'Genesis block not created'"]
-        volumeMounts:
-        - name: orderer-data
-          mountPath: /var/hyperledger/orderer
       containers:
       - name: orderer
         image: hyperledger/fabric-orderer:2.5
         env:
         - name: FABRIC_LOGGING_SPEC
-          value: INFO
+          value: DEBUG
         - name: ORDERER_GENERAL_LISTENADDRESS
           value: 0.0.0.0
         - name: ORDERER_GENERAL_LISTENPORT
@@ -110,18 +103,56 @@ spec:
         - name: ORDERER_GENERAL_LOCALMSPID
           value: OrdererMSP
         - name: ORDERER_GENERAL_LOCALMSPDIR
-          value: /var/hyperledger/orderer/msp
+          value: /tmp/msp
         - name: ORDERER_OPERATIONS_LISTENADDRESS
           value: 0.0.0.0:17050
+        - name: ORDERER_GENERAL_BOOTSTRAPMETHOD
+          value: none
+        - name: ORDERER_GENERAL_PROFILE_ENABLED
+          value: "false"
+        - name: ORDERER_CHANNELPARTICIPATION_ENABLED
+          value: "true"
+        - name: ORDERER_ADMIN_LISTENADDRESS
+          value: 0.0.0.0:7052
+        - name: ORDERER_GENERAL_TLS_ENABLED
+          value: "false"
+        - name: ORDERER_GENERAL_AUTHENTICATION_NOEXPIRATIONCHECKS
+          value: "true"
         ports:
         - containerPort: 7050
         - containerPort: 17050
+        - containerPort: 7052
+        command: ["sh", "-c", "apt-get update && apt-get install -y openssl && mkdir -p /var/hyperledger/production/orderer && mkdir -p /tmp/msp/admincerts && mkdir -p /tmp/msp/cacerts && mkdir -p /tmp/msp/config && mkdir -p /tmp/msp/keystore && mkdir -p /tmp/msp/signcerts && mkdir -p /tmp/msp/tlscacerts && echo 'NodeOUs:\n  Enable: false\n  ClientOUIdentifier:\n    Certificate: cacerts/ca.crt\n    OrganizationalUnitIdentifier: client\n  PeerOUIdentifier:\n    Certificate: cacerts/ca.crt\n    OrganizationalUnitIdentifier: peer\n  AdminOUIdentifier:\n    Certificate: cacerts/ca.crt\n    OrganizationalUnitIdentifier: admin\n  OrdererOUIdentifier:\n    Certificate: cacerts/ca.crt\n    OrganizationalUnitIdentifier: orderer' > /tmp/msp/config.yaml && openssl genrsa -out /tmp/msp/keystore/key.pem 2048 && openssl req -new -key /tmp/msp/keystore/key.pem -out /tmp/msp/keystore/csr.pem -subj '/CN=orderer/O=Hyperledger/OU=Fabric/' && openssl x509 -req -in /tmp/msp/keystore/csr.pem -signkey /tmp/msp/keystore/key.pem -out /tmp/msp/signcerts/cert.pem -days 365 && cp /tmp/msp/signcerts/cert.pem /tmp/msp/cacerts/ca.crt && cp /tmp/msp/signcerts/cert.pem /tmp/msp/admincerts/admincert.pem && sleep 5 && orderer"]
         volumeMounts:
         - name: orderer-data
-          mountPath: /var/hyperledger/orderer
+          mountPath: /var/hyperledger/production/orderer
+        - name: orderer-msp-dir
+          mountPath: /var/hyperledger/orderer/msp
+        - name: temp-msp
+          mountPath: /tmp/msp
+        - name: genesis-block
+          mountPath: /var/hyperledger/orderer/genesis.block
+          subPath: genesis.block
       volumes:
       - name: orderer-data
         emptyDir: {}
+      - name: orderer-msp-dir
+        secret:
+          secretName: orderer-msp-secret
+          items:
+          - key: ca.crt
+            path: cacerts/ca.crt
+          - key: cert.pem
+            path: signcerts/cert.pem
+          - key: key.pem
+            path: keystore/key.pem
+          - key: admincert.pem
+            path: admincerts/admincert.pem
+      - name: temp-msp
+        emptyDir: {}
+      - name: genesis-block
+        configMap:
+          name: fabric-config
 ---
 apiVersion: v1
 kind: Service
@@ -162,8 +193,8 @@ spec:
           value: unix:///host/var/run/docker.sock
         - name: CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE
           value: mediblock_mediblock-network
-        - name: CORE_LOGGING_LEVEL
-          value: INFO
+        - name: FABRIC_LOGGING_SPEC
+          value: DEBUG
         - name: CORE_PEER_TLS_ENABLED
           value: "false"
         - name: CORE_PEER_GOSSIP_USELEADERELECTION
@@ -171,23 +202,53 @@ spec:
         - name: CORE_PEER_GOSSIP_ORGLEADER
           value: "false"
         - name: CORE_PEER_ADDRESS
-          value: peer0.org1.example.com:7051
+          value: peer0-org1:7051
         - name: CORE_PEER_GOSSIP_EXTERNALENDPOINT
-          value: peer0.org1.example.com:7051
+          value: peer0-org1:7051
         - name: CORE_PEER_LOCALMSPID
           value: Org1MSP
         - name: CORE_PEER_ID
           value: peer0.org1.example.com
         - name: CORE_OPERATIONS_LISTENADDRESS
           value: 0.0.0.0:17051
+        - name: CORE_PEER_MSPCONFIGPATH
+          value: /tmp/msp
+        - name: CORE_PEER_GOSSIP_SKIPHANDSHAKE
+          value: "true"
+        - name: CORE_PEER_AUTHENTICATION_NOEXPIRATIONCHECKS
+          value: "true"
         ports:
         - containerPort: 7051
         - containerPort: 17051
         securityContext:
           privileged: true
+        command: ["sh", "-c", "apt-get update && apt-get install -y openssl && mkdir -p /var/hyperledger/production && mkdir -p /tmp/msp/admincerts && mkdir -p /tmp/msp/cacerts && mkdir -p /tmp/msp/config && mkdir -p /tmp/msp/keystore && mkdir -p /tmp/msp/signcerts && mkdir -p /tmp/msp/tlscacerts && echo 'NodeOUs:\n  Enable: false\n  ClientOUIdentifier:\n    Certificate: cacerts/ca.crt\n    OrganizationalUnitIdentifier: client\n  PeerOUIdentifier:\n    Certificate: cacerts/ca.crt\n    OrganizationalUnitIdentifier: peer\n  AdminOUIdentifier:\n    Certificate: cacerts/ca.crt\n    OrganizationalUnitIdentifier: admin\n  OrdererOUIdentifier:\n    Certificate: cacerts/ca.crt\n    OrganizationalUnitIdentifier: orderer' > /tmp/msp/config.yaml && openssl genrsa -out /tmp/msp/keystore/key.pem 2048 && openssl req -new -key /tmp/msp/keystore/key.pem -out /tmp/msp/keystore/csr.pem -subj '/CN=peer/O=Hyperledger/OU=Fabric/' && openssl x509 -req -in /tmp/msp/keystore/csr.pem -signkey /tmp/msp/keystore/key.pem -out /tmp/msp/signcerts/peer.crt -days 365 && cp /tmp/msp/signcerts/peer.crt /tmp/msp/cacerts/ca.crt && cp /tmp/msp/signcerts/peer.crt /tmp/msp/admincerts/admincert.pem && export CORE_PEER_MSPCONFIGPATH=/tmp/msp && sleep 5 && peer node start"]
         volumeMounts:
         - name: peer-data
-          mountPath: /etc/hyperledger/fabric
+          mountPath: /var/hyperledger/production
+        - name: docker-socket
+          mountPath: /host/var/run/docker.sock
+        - name: peer-msp-dir
+          mountPath: /etc/hyperledger/fabric/msp
+        - name: temp-msp
+          mountPath: /tmp/msp
       volumes:
       - name: peer-data
+        emptyDir: {}
+      - name: docker-socket
+        hostPath:
+          path: /var/run/docker.sock
+      - name: peer-msp-dir
+        secret:
+          secretName: peer0-org1-msp-secret
+          items:
+          - key: ca.crt
+            path: cacerts/ca.crt
+          - key: peer.crt
+            path: signcerts/peer.crt
+          - key: peer.key
+            path: keystore/peer.key
+          - key: admincert.pem
+            path: admincerts/admincert.pem
+      - name: temp-msp
         emptyDir: {} 
