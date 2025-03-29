@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ipfs
+  namespace: mediblock
+spec:
+  selector:
+    app: ipfs
+  ports:
+  - name: swarm
+    port: 4001
+    targetPort: 4001
+  - name: api
+    port: 5001
+    targetPort: 5001
+  - name: gateway
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ipfs
+  namespace: mediblock
+spec:
+  serviceName: ipfs
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ipfs
+  template:
+    metadata:
+      labels:
+        app: ipfs
+    spec:
+      containers:
+      - name: ipfs
+        image: ipfs/kubo:latest
+        env:
+        - name: IPFS_PROFILE
+          value: server
+        ports:
+        - containerPort: 4001
+          name: swarm
+        - containerPort: 5001
+          name: api
+        - containerPort: 8080
+          name: gateway
+        volumeMounts:
+        - name: ipfs-data
+          mountPath: /data/ipfs
+  volumeClaimTemplates:
+  - metadata:
+      name: ipfs-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi 

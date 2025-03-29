@@ -1,0 +1,193 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ca-org1
+  namespace: mediblock
+spec:
+  selector:
+    app: ca-org1
+  ports:
+  - name: ca-port
+    port: 7054
+    targetPort: 7054
+  - name: operations
+    port: 17054
+    targetPort: 17054
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ca-org1
+  namespace: mediblock
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ca-org1
+  template:
+    metadata:
+      labels:
+        app: ca-org1
+    spec:
+      containers:
+      - name: ca-org1
+        image: hyperledger/fabric-ca:2.5
+        env:
+        - name: FABRIC_CA_HOME
+          value: /etc/hyperledger/fabric-ca-server
+        - name: FABRIC_CA_SERVER_CA_NAME
+          value: ca.org1.example.com
+        - name: FABRIC_CA_SERVER_TLS_ENABLED
+          value: "false"
+        - name: FABRIC_CA_SERVER_PORT
+          value: "7054"
+        - name: FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS
+          value: 0.0.0.0:17054
+        ports:
+        - containerPort: 7054
+        - containerPort: 17054
+        command: ["sh", "-c", "fabric-ca-server start -b admin:adminpw -d"]
+        volumeMounts:
+        - name: ca-config
+          mountPath: /etc/hyperledger/fabric-ca-server
+      volumes:
+      - name: ca-config
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orderer
+  namespace: mediblock
+spec:
+  selector:
+    app: orderer
+  ports:
+  - name: orderer-port
+    port: 7050
+    targetPort: 7050
+  - name: operations
+    port: 17050
+    targetPort: 17050
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orderer
+  namespace: mediblock
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orderer
+  template:
+    metadata:
+      labels:
+        app: orderer
+    spec:
+      initContainers:
+      - name: generate-genesis
+        image: hyperledger/fabric-tools:2.5
+        command: ["sh", "-c", "configtxgen -profile TwoOrgsOrdererGenesis -channelID system-channel -outputBlock /var/hyperledger/orderer/genesis.block || cp /tmp/genesis.block /var/hyperledger/orderer/genesis.block || echo 'Genesis block not created'"]
+        volumeMounts:
+        - name: orderer-data
+          mountPath: /var/hyperledger/orderer
+      containers:
+      - name: orderer
+        image: hyperledger/fabric-orderer:2.5
+        env:
+        - name: FABRIC_LOGGING_SPEC
+          value: INFO
+        - name: ORDERER_GENERAL_LISTENADDRESS
+          value: 0.0.0.0
+        - name: ORDERER_GENERAL_LISTENPORT
+          value: "7050"
+        - name: ORDERER_GENERAL_GENESISMETHOD
+          value: file
+        - name: ORDERER_GENERAL_GENESISFILE
+          value: /var/hyperledger/orderer/genesis.block
+        - name: ORDERER_GENERAL_LOCALMSPID
+          value: OrdererMSP
+        - name: ORDERER_GENERAL_LOCALMSPDIR
+          value: /var/hyperledger/orderer/msp
+        - name: ORDERER_OPERATIONS_LISTENADDRESS
+          value: 0.0.0.0:17050
+        ports:
+        - containerPort: 7050
+        - containerPort: 17050
+        volumeMounts:
+        - name: orderer-data
+          mountPath: /var/hyperledger/orderer
+      volumes:
+      - name: orderer-data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: peer0-org1
+  namespace: mediblock
+spec:
+  selector:
+    app: peer0-org1
+  ports:
+  - name: peer-port
+    port: 7051
+    targetPort: 7051
+  - name: operations
+    port: 17051
+    targetPort: 17051
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: peer0-org1
+  namespace: mediblock
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: peer0-org1
+  template:
+    metadata:
+      labels:
+        app: peer0-org1
+    spec:
+      containers:
+      - name: peer0-org1
+        image: hyperledger/fabric-peer:2.5
+        env:
+        - name: CORE_VM_ENDPOINT
+          value: unix:///host/var/run/docker.sock
+        - name: CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE
+          value: mediblock_mediblock-network
+        - name: CORE_LOGGING_LEVEL
+          value: INFO
+        - name: CORE_PEER_TLS_ENABLED
+          value: "false"
+        - name: CORE_PEER_GOSSIP_USELEADERELECTION
+          value: "true"
+        - name: CORE_PEER_GOSSIP_ORGLEADER
+          value: "false"
+        - name: CORE_PEER_ADDRESS
+          value: peer0.org1.example.com:7051
+        - name: CORE_PEER_GOSSIP_EXTERNALENDPOINT
+          value: peer0.org1.example.com:7051
+        - name: CORE_PEER_LOCALMSPID
+          value: Org1MSP
+        - name: CORE_PEER_ID
+          value: peer0.org1.example.com
+        - name: CORE_OPERATIONS_LISTENADDRESS
+          value: 0.0.0.0:17051
+        ports:
+        - containerPort: 7051
+        - containerPort: 17051
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: peer-data
+          mountPath: /etc/hyperledger/fabric
+      volumes:
+      - name: peer-data
+        emptyDir: {} 
