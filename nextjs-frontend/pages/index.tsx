@@ -93,8 +93,9 @@ export default function Home() {
           <h2>Register User</h2>
           <form onSubmit={registerUser}>
             <div style={{ marginBottom: '10px' }}>
-              <label>Name:</label>
+              <label htmlFor="userName">Name:</label>
               <input 
+                id="userName"
                 type="text" 
                 value={userName} 
                 onChange={(e) => setUserName(e.target.value)} 
@@ -104,8 +105,9 @@ export default function Home() {
             </div>
             
             <div style={{ marginBottom: '10px' }}>
-              <label>Role:</label>
+              <label htmlFor="userRole">Role:</label>
               <select 
+                id="userRole"
                 value={userRole} 
                 onChange={(e) => setUserRole(e.target.value)}
                 style={{ width: '100%', padding: '8px', marginTop: '5px' }}
@@ -144,8 +146,9 @@ export default function Home() {
           <h2>Upload Record</h2>
           <form onSubmit={uploadFile}>
             <div style={{ marginBottom: '10px' }}>
-              <label>Patient ID:</label>
+              <label htmlFor="patientId">Patient ID:</label>
               <input 
+                id="patientId"
                 type="text" 
                 value={patientId} 
                 onChange={(e) => setPatientId(e.target.value)} 
@@ -155,8 +158,9 @@ export default function Home() {
             </div>
             
             <div style={{ marginBottom: '10px' }}>
-              <label>File:</label>
+              <label htmlFor="recordFile">File:</label>
               <input 
+                id="recordFile"
                 type="file" 
                 onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                 style={{ width: '100%', padding: '8px', marginTop: '5px' }}
@@ -193,8 +197,9 @@ export default function Home() {
           <h2>Retrieve Record</h2>
           <form onSubmit={retrieveRecord}>
             <div style={{ marginBottom: '10px' }}>
-              <label>Record ID:</label>
+              <label htmlFor="retrieveRecordId">Record ID:</label>
               <input 
+                id="retrieveRecordId"
                 type="text" 
                 value={retrieveRecordId} 
                 onChange={(e) => setRetrieveRecordId(e.target.value)} 
