@@ -96,6 +96,8 @@ Thumbs.db
 **/wallet/
 **/config/
 **/scripts/fabric-samples
+fabric-config/msp/
+**/msp/
 
 # Dependency directories
 /tmp/
