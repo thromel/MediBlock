@@ -77,6 +77,11 @@ O                  = MediBlock
 OU                 = Hyperledger Fabric
 CN                 = fabric-ca
 
+[ v3_ca ]
+basicConstraints   = critical, CA:true, pathlen:1
+keyUsage           = critical, keyCertSign, cRLSign
+subjectKeyIdentifier = hash
+
 [ v3_req ]
 keyUsage           = critical, digitalSignature, keyEncipherment, keyCertSign, cRLSign
 extendedKeyUsage   = serverAuth, clientAuth
@@ -112,7 +117,7 @@ echo "Generating Root CA certificate..."
 openssl ecparam -name prime256v1 -genkey -noout -out $OUTPUT_DIR/ca/ca.key
 openssl req -new -x509 -key $OUTPUT_DIR/ca/ca.key -out $OUTPUT_DIR/ca/ca.crt -days 3650 \
   -config $OUTPUT_DIR/openssl.cnf \
-  -extensions v3_req \
+  -extensions v3_ca \
   -sha256
 
 # 2. Generate Orderer certificates
@@ -183,9 +188,12 @@ data:
         externalEndpoint: peer0-org1:7051
       tls:
         enabled: false
+      mspConfigPath: /var/hyperledger/production/peer/msp
     ledger:
       state:
         stateDatabase: goleveldb
+      history:
+        enableHistoryDatabase: true
     chaincode:
       logging:
         level: info
@@ -197,12 +205,11 @@ data:
       TLS:
         Enabled: false
       LogLevel: info
-      GenesisMethod: file
-      GenesisFile: /var/hyperledger/fabric/config/genesis.block
-      LocalMSPDir: /var/hyperledger/fabric/msp
+      GenesisMethod: none
+      LocalMSPDir: /var/hyperledger/production/orderer/msp
       LocalMSPID: OrdererMSP
     FileLedger:
-      Location: /var/hyperledger/fabric/data
+      Location: /var/hyperledger/production/orderer
 ---
 apiVersion: v1
 kind: ConfigMap

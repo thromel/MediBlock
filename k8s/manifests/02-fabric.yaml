@@ -90,6 +90,9 @@ spec:
         - name: msp-volume
           configMap:
             name: orderer-msp
+        - name: msp-secret-volume
+          secret:
+            secretName: orderer-msp-secret
         - name: empty-dir
           emptyDir: {}
       initContainers:
@@ -98,10 +101,12 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
-              mkdir -p /var/hyperledger/production/orderer/msp/keystore && mkdir -p /var/hyperledger/production/orderer/msp/cacerts && mkdir -p /var/hyperledger/production/orderer/msp/signcerts && mkdir -p /var/hyperledger/production/orderer/msp/admincerts && cp /msp-data/cacerts-ca.crt /var/hyperledger/production/orderer/msp/cacerts/ca.crt && cp /msp-data/keystore-key.pem /var/hyperledger/production/orderer/msp/keystore/key.pem && cp /msp-data/signcerts-cert.pem /var/hyperledger/production/orderer/msp/signcerts/cert.pem && cp /msp-data/admincerts-cert.pem /var/hyperledger/production/orderer/msp/admincerts/cert.pem && cp /msp-data/config.yaml /var/hyperledger/production/orderer/msp/config.yaml && chmod -R 777 /var/hyperledger/production
+              mkdir -p /var/hyperledger/production/orderer/msp/keystore && mkdir -p /var/hyperledger/production/orderer/msp/cacerts && mkdir -p /var/hyperledger/production/orderer/msp/signcerts && mkdir -p /var/hyperledger/production/orderer/msp/admincerts && cp /msp-data/cacerts-ca.crt /var/hyperledger/production/orderer/msp/cacerts/ca.crt && cp /msp-secret-data/key.pem /var/hyperledger/production/orderer/msp/keystore/key.pem && cp /msp-data/signcerts-cert.pem /var/hyperledger/production/orderer/msp/signcerts/cert.pem && cp /msp-data/admincerts-cert.pem /var/hyperledger/production/orderer/msp/admincerts/cert.pem && chmod -R 777 /var/hyperledger/production
           volumeMounts:
             - name: msp-volume
               mountPath: /msp-data
+            - name: msp-secret-volume
+              mountPath: /msp-secret-data
             - name: empty-dir
               mountPath: /var/hyperledger/production
       containers:
@@ -120,11 +125,9 @@ spec:
             - name: ORDERER_GENERAL_CHANNELPARTICIPATION_ENABLED
               value: "true"
             - name: ORDERER_GENERAL_LOCALMSPID
-              value: "OrdererMSP"
+              value: "MediBlockMSP"
             - name: ORDERER_GENERAL_LOCALMSPDIR
               value: "/var/hyperledger/production/orderer/msp"
-            - name: GODEBUG
-              value: "x509ignoreCN=0"
           volumeMounts:
             - name: empty-dir
               mountPath: /var/hyperledger/production
@@ -164,6 +167,9 @@ spec:
         - name: msp-volume
           configMap:
             name: peer0-org1-msp
+        - name: msp-secret-volume
+          secret:
+            secretName: peer0-org1-msp-secret
         - name: empty-dir
           emptyDir: {}
       initContainers:
@@ -172,10 +178,12 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
-              mkdir -p /var/hyperledger/production/peer/msp/keystore && mkdir -p /var/hyperledger/production/peer/msp/cacerts && mkdir -p /var/hyperledger/production/peer/msp/signcerts && mkdir -p /var/hyperledger/production/peer/msp/admincerts && cp /msp-data/cacerts-ca.crt /var/hyperledger/production/peer/msp/cacerts/ca.crt && cp /msp-data/keystore-key.pem /var/hyperledger/production/peer/msp/keystore/key.pem && cp /msp-data/signcerts-cert.pem /var/hyperledger/production/peer/msp/signcerts/cert.pem && cp /msp-data/admincerts-cert.pem /var/hyperledger/production/peer/msp/admincerts/cert.pem && cp /msp-data/config.yaml /var/hyperledger/production/peer/msp/config.yaml && chmod -R 777 /var/hyperledger/production
+              mkdir -p /var/hyperledger/production/peer/msp/keystore && mkdir -p /var/hyperledger/production/peer/msp/cacerts && mkdir -p /var/hyperledger/production/peer/msp/signcerts && mkdir -p /var/hyperledger/production/peer/msp/admincerts && cp /msp-data/cacerts-ca.crt /var/hyperledger/production/peer/msp/cacerts/ca.crt && cp /msp-secret-data/peer.key /var/hyperledger/production/peer/msp/keystore/key.pem && cp /msp-data/signcerts-cert.pem /var/hyperledger/production/peer/msp/signcerts/cert.pem && cp /msp-data/admincerts-cert.pem /var/hyperledger/production/peer/msp/admincerts/cert.pem && chmod -R 777 /var/hyperledger/production
           volumeMounts:
             - name: msp-volume
               mountPath: /msp-data
+            - name: msp-secret-volume
+              mountPath: /msp-secret-data
             - name: empty-dir
               mountPath: /var/hyperledger/production
       containers:
@@ -201,11 +209,9 @@ spec:
             - name: CORE_PEER_GOSSIP_EXTERNALENDPOINT
               value: "peer0-org1:7051"
             - name: CORE_PEER_LOCALMSPID
-              value: "Org1MSP"
+              value: "MediBlockMSP"
             - name: CORE_PEER_MSPCONFIGPATH
               value: "/var/hyperledger/production/peer/msp"
-            - name: GODEBUG
-              value: "x509ignoreCN=0"
           volumeMounts:
             - name: empty-dir
               mountPath: /var/hyperledger/production 
