@@ -1,0 +1,20 @@
+General:
+  ListenAddress: 0.0.0.0
+  ListenPort: 7050
+  TLS:
+    Enabled: false
+  GenesisMethod: file
+  GenesisFile: /var/hyperledger/fabric/config/genesisblock
+  BootstrapMethod: file
+  BootstrapFile: /var/hyperledger/fabric/config/genesisblock
+  LocalMSPDir: /var/hyperledger/production/orderer/msp
+  LocalMSPID: MediBlockMSP
+  Authentication:
+    TimeWindow: 15m
+
+FileLedger:
+  Location: /var/hyperledger/production/orderer
+
+ChannelParticipation:
+  Enabled: true
+  MaxRequestBodySize: 1 MB 

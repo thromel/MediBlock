@@ -31,6 +31,22 @@ git clone https://github.com/yourusername/MediBlock.git
 cd MediBlock
 ```
 
+### Simplified Deployment (New)
+
+We now provide a single script that handles the entire deployment process:
+
+```bash
+# Make the script executable
+chmod +x scripts/deploy-mediblock.sh
+
+# Run the deployment script
+./scripts/deploy-mediblock.sh
+```
+
+For detailed information about the deployment process and options, see our [Deployment Guide](docs/DEPLOYMENT.md).
+
+### Manual Setup (Alternative)
+
 2. Generate the Fabric certificates and configuration:
 
 ```bash
@@ -77,7 +93,7 @@ The frontend will be available at http://localhost:3000
 
 ### Kubernetes Deployment
 
-For deploying to Kubernetes:
+For manual deployment to Kubernetes:
 
 1. Create the namespace and apply certificates:
 
