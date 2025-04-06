@@ -10,6 +10,48 @@ spec:
   - port: 8081
     targetPort: 8081
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fabric-config
+  namespace: mediblock
+data:
+  connection-org1.yaml: |
+    ---
+    name: mediblock-network
+    version: 1.0.0
+    client:
+      organization: Org1
+      connection:
+        timeout:
+          peer:
+            endorser: '300'
+    organizations:
+      Org1:
+        mspid: Org1MSP
+        peers:
+          - peer0.org1.example.com
+    peers:
+      peer0.org1.example.com:
+        url: grpcs://peer0-org1:7051
+        tlsCACerts:
+          path: /app/crypto/ca.crt
+        grpcOptions:
+          ssl-target-name-override: peer0.org1.example.com
+          hostnameOverride: peer0.org1.example.com
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fabric-user-credentials
+  namespace: mediblock
+type: Opaque
+data:
+  # These values come from the peer's MSP certificates
+  appUser.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNhekNDQWhDZ0F3SUJBZ0lKQU1XUGRETGhuYit4TUFvR0NDcUdTTTQ5QkFNQ01IOHhDekFKQmdOVkJBWVQKQWxWVE1STXdFUVlEVlFRSURBcERZV3hwWm05eWJtbGhNUll3RkFZRFZRUUhEQTFUWVc0Z1JuSmhibU5wYzJOdgpNUkl3RUFZRFZRUUtEQWxOWldScFFteHZZMnN4R3pBWkJnTlZCQXNNRWtoNWNHVnliR1ZrWjJWeUlFWmhZbkpwCll6RVNNQkFHQTFVRUF3d0pabUZpY21sakxXTmhNQjRYRFRJMU1ETXpNREV5TVRReU1Gb1hEVE0xTURNeU9ERXkKTVRReU1Gb3dmekVMTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnTUNrTmhiR2xtYjNKdWFXRXhGakFVQmdOVgpCQWNNRFZOaGJpQkdjbUZ1WTJselkyOHhFakFRQmdOVkJBb01DVTFsWkdsQ2JHOWphekViTUJrR0ExVUVDd3dTClNIbHdaWEpzWldSblpYSWdSbUZpY21sak1SSXdFQVlEVlFRRERBbG1ZV0p5YVdNdFkyRXdXVEFUQmdjcWhrak8KUFFJQkJnZ3Foa2pPUFFNQkJ3TkNBQVRmWDlRZXRucFdOTVVBRlB6SmFYcDlaL24rQzltSE13aFJGbUp4ZmsrTwpBWmVtSHd2a0JXNkUzOUdaSjlQWnZTTWFObjNubTBFQUdiVG9ydndTdkVrTW8zVXdjekFPQmdOVkhROEJBZjhFCkJBTUNCNEF3RXdZRFZSMGxCQXd3Q2dZSUt3WUJCUVVIQXdJd0RBWURWUjBUQVFIL0JBSXdBREFkQmdOVkhRNEUKRmdRVW93d2w3azg1VURQdlZkTk1JcjJYb3cza2xyd3dId1lEVlIwakJCZ3dGb0FVY2hzT0JpRkJyWlhhVHk5awpWR2ZxTEJuWWlla3dDZ1lJS29aSXpqMEVBd0lEU1FBd1JnSWhBUEZ2ZWRjRVZjQ0JTRkkydUxjcmpQNEpraldLCmFjSjU0dFE4RHd5TGROWElBaUVBL1lkdTJXZVpyVGhCcUhYV3B1OHFlb3BaKzZkOTlTTEFCZjh5aWJFb0xkUT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+  appUser_sk: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSVBRRTNuZmFEZ0Uvejd2ckx5ckFuc09NQjY0QWpBZ2htS1N2WnJpSk1WYjJvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFdGszU0FHTm9FZXk0bkpWUXhVT0owN0lzZnBQUE1jaEJiWVpab2ptK3QxOTMvMi9ZbmJEeQpQekNKa25TWFpZR0xNL2x3MmcwZlNiYXpzSG9oQ2ZtS2F3PT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
+  ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNPekNDQWVDZ0F3SUJBZ0lKQUsySWliSFVSRGNtTUFvR0NDcUdTTTQ5QkFNQ01IOHhDekFKQmdOVkJBWVQKQWxWVE1STXdFUVlEVlFRSURBcERZV3hwWm05eWJtbGhNUll3RkFZRFZRUUhEQTFUWVc0Z1JuSmhibU5wYzJOdgpNUkl3RUFZRFZRUUtEQWxOWldScFFteHZZMnN4R3pBWkJnTlZCQXNNRWtoNWNHVnliR1ZrWjJWeUlFWmhZbkpwCll6RVNNQkFHQTFVRUF3d0pabUZpY21sakxXTmhNQjRYRFRJMU1ETXpNREV5TVRReU1Gb1hEVE0xTURNeU9ERXkKTVRReU1Gb3dmekVMTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnTUNrTmhiR2xtYjNKdWFXRXhGakFVQmdOVgpCQWNNRFZOaGJpQkdjbUZ1WTJselkyOHhFakFRQmdOVkJBb01DVTFsWkdsQ2JHOWphekViTUJrR0ExVUVDd3dTClNIbHdaWEpzWldSblpYSWdSbUZpY21sak1SSXdFQVlEVlFRRERBbG1ZV0p5YVdNdFkyRXdXVEFUQmdjcWhrak8KUFFJQkJnZ3Foa2pPUFFNQkJ3TkNBQVNWcHo1NkFZUTlLOUk5N0JmQlc5ZS8xWFQzTTZabitZa3pxSFArV0pnVQprR0RsU2FEODZuN3FmMkw4THhjdzVlL0lOY3lzYmJzQ1JiV0JKZldZcmI5Wm8wVXdRekFTQmdOVkhSTUJBZjhFCkNEQUdBUUgvQWdFQk1BNEdBMVVkRHdFQi93UUVBd0lCQmpBZEJnTlZIUTRFRmdRVWNoc09CaUZCclpYYVR5OWsKVkdmcUxCbllpZWt3Q2dZSUtvWkl6ajBFQXdJRFNRQXdSZ0loQUt2ejgyVG1IQ1VQSWhXT1NQR1dHL2FQMC9TbgpUQXVXYlY2N3ZnUUhDd2JqQWlFQTI2Tnlodmc4VUM4c01mOTV2V3g2MUJ2YTFrcTR3VFY3cEMyblgwZUJXc1k9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -25,6 +67,28 @@ spec:
       labels:
         app: go-service
     spec:
+      initContainers:
+      - name: init-wallet-structure
+        image: busybox:1.34
+        command: ['/bin/sh', '-c']
+        args:
+          - |
+            mkdir -p /app/wallet/appUser
+            # Create the wallet ID file in the correct format
+            echo '{
+              "type": "X.509",
+              "version": 1,
+              "mspId": "Org1MSP",
+              "credentials": {
+                "certificate": "'$(cat /app/crypto/appUser.pem | tr -d '\n' | sed 's/-----BEGIN CERTIFICATE-----/-----BEGIN CERTIFICATE-----\\n/g' | sed 's/-----END CERTIFICATE-----/\\n-----END CERTIFICATE-----/g')'",
+                "privateKey": "'$(cat /app/crypto/appUser_sk | tr -d '\n' | sed 's/-----BEGIN EC PRIVATE KEY-----/-----BEGIN EC PRIVATE KEY-----\\n/g' | sed 's/-----END EC PRIVATE KEY-----/\\n-----END EC PRIVATE KEY-----/g')'"
+              }
+            }' > /app/wallet/appUser/appUser.id
+        volumeMounts:
+        - name: wallet-volume
+          mountPath: /app/wallet
+        - name: fabric-crypto-volume
+          mountPath: /app/crypto
       containers:
       - name: go-service
         image: mediblock/go-service:latest
@@ -34,10 +98,35 @@ spec:
         envFrom:
         - configMapRef:
             name: mediblock-config
+        env:
+          - name: WALLET_PATH
+            value: "/app/wallet"
+          - name: FABRIC_CFG_PATH
+            value: "/app/config"
+          - name: USER_CERT_PATH
+            value: "/app/crypto/appUser.pem"
+          - name: USER_KEY_PATH
+            value: "/app/crypto/appUser_sk"
+        volumeMounts:
+          - name: fabric-config-volume
+            mountPath: /app/config
+          - name: fabric-crypto-volume
+            mountPath: /app/crypto
+          - name: wallet-volume
+            mountPath: /app/wallet
         resources:
           limits:
             memory: "256Mi"
             cpu: "500m"
           requests:
             memory: "128Mi"
-            cpu: "250m" 
+            cpu: "250m"
+      volumes:
+        - name: fabric-config-volume
+          configMap:
+            name: fabric-config
+        - name: fabric-crypto-volume
+          secret:
+            secretName: fabric-user-credentials
+        - name: wallet-volume
+          emptyDir: {} 

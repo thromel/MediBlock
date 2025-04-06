@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -85,9 +86,29 @@ func connectToNetwork() (*gateway.Contract, error) {
 		getEnv("WALLET_PATH", "wallet"),
 	)
 
+	// Create the wallet directory if it doesn't exist
+	if err := os.MkdirAll(walletPath, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create wallet directory: %v", err)
+	}
+
+	// Initialize wallet
 	wallet, err := gateway.NewFileSystemWallet(walletPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create wallet: %v", err)
+	}
+
+	// Create or update the appUser identity in the wallet
+	mspID := getEnv("MSP_ID", "Org1MSP")
+	certPath := getEnv("USER_CERT_PATH", "")
+	keyPath := getEnv("USER_KEY_PATH", "")
+
+	// Only try to create identity if paths are provided
+	if certPath != "" && keyPath != "" {
+		err = createOrUpdateWalletIdentity(wallet, "appUser", mspID, certPath, keyPath)
+		if err != nil {
+			log.Printf("Warning: Failed to create/update wallet identity: %v", err)
+			// Continue checking if identity exists anyway
+		}
 	}
 
 	// Check if user identity exists in wallet
@@ -106,14 +127,53 @@ func connectToNetwork() (*gateway.Contract, error) {
 	defer gw.Close()
 
 	// Get network (channel) and contract (chaincode)
-	network, err := gw.GetNetwork("mychannel")
+	channelName := getEnv("CHANNEL_ID", "mychannel")
+	network, err := gw.GetNetwork(channelName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get network: %v", err)
 	}
 
-	contract := network.GetContract("ehrmanager")
+	chaincodeID := getEnv("CHAINCODE_ID", "ehrmanager")
+	contract := network.GetContract(chaincodeID)
 
 	return contract, nil
+}
+
+// createOrUpdateWalletIdentity creates or updates a wallet identity
+func createOrUpdateWalletIdentity(wallet *gateway.Wallet, label string, mspID string, certPath string, keyPath string) error {
+	// Read the certificate file
+	certBytes, err := ioutil.ReadFile(certPath)
+	if err != nil {
+		return fmt.Errorf("failed to read certificate file: %w", err)
+	}
+	certPEM := string(certBytes)
+
+	// Read the private key file
+	keyBytes, err := ioutil.ReadFile(keyPath)
+	if err != nil {
+		return fmt.Errorf("failed to read private key file: %w", err)
+	}
+	keyPEM := string(keyBytes)
+
+	// Create a new X.509 identity
+	identity := gateway.NewX509Identity(mspID, certPEM, keyPEM)
+
+	// Remove existing identity if it exists
+	exists := wallet.Exists(label)
+	if exists {
+		err = wallet.Remove(label)
+		if err != nil {
+			return fmt.Errorf("failed to remove existing identity: %w", err)
+		}
+	}
+
+	// Put the identity in the wallet
+	err = wallet.Put(label, identity)
+	if err != nil {
+		return fmt.Errorf("failed to put identity in wallet: %w", err)
+	}
+
+	return nil
 }
 
 // API Handlers
