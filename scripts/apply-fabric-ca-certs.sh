@@ -82,6 +82,9 @@ kubectl create secret generic peer0-org1-tls -n mediblock \
 # Create a pod to deploy certificates to the right locations
 echo "Creating a pod to deploy certificates to the right locations..."
 kubectl exec -n mediblock cert-access -- bash -c "
+# Delete existing configmaps first
+kubectl delete configmap orderer-file-locations peer0-org1-file-locations -n mediblock --ignore-not-found=true
+
 # Create ConfigMap for orderer file locations
 kubectl create configmap orderer-file-locations -n mediblock --from-literal=msp-path=/var/hyperledger/production/orderer/msp --from-literal=tls-path=/var/hyperledger/fabric/config/tls
 
@@ -92,11 +95,6 @@ kubectl create configmap peer0-org1-file-locations -n mediblock --from-literal=m
 # Delete helper pod
 echo "Deleting helper pod..."
 kubectl delete pod cert-access -n mediblock
-
-# Restart required deployments
-echo "Restarting orderer and peer deployments..."
-kubectl rollout restart deployment/orderer -n mediblock
-kubectl rollout restart deployment/peer0-org1 -n mediblock
 
 echo "Certificate setup complete."
 echo "Use 'kubectl get pods -n mediblock' to check the status of the pods." 

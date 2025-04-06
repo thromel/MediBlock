@@ -1,12 +1,71 @@
-# MediBlock Kubernetes Setup
+# MediBlock Kubernetes Deployment
 
-This directory contains Kubernetes configuration files for deploying the MediBlock healthcare blockchain platform in both development and production environments.
+This directory contains the Kubernetes manifests and deployment scripts for the MediBlock platform.
 
 ## Prerequisites
 
-- Docker
-- Kubernetes (Minikube, Kind, or a cloud Kubernetes cluster)
-- kubectl
+- Kubernetes cluster (Docker Desktop for local development)
+- kubectl configured to connect to your cluster
+- Hyperledger Fabric tools
+
+## Deployment
+
+For a simplified deployment experience, use the provided deployment script:
+
+```bash
+./scripts/deploy-mediblock.sh
+```
+
+This script performs the following tasks:
+- Creates the necessary namespace
+- Cleans up existing deployments if they exist
+- Generates certificates with proper key usage settings
+- Creates configuration files for orderer and peer nodes
+- Generates the genesis block
+- Deploys orderer and peer with proper volume mounts
+- Deploys supporting services (IPFS, Go service, Python service, frontend)
+
+## Manual Deployment
+
+For manual deployment, follow these steps as documented in the `DEPLOYMENT.md` file:
+
+1. Create namespace and base ConfigMaps
+2. Generate certificates using `./scripts/apply-fabric-ca-certs.sh`
+3. Create configuration files and ConfigMaps
+4. Generate genesis block using `./scripts/generate-genesis.sh`
+5. Create and apply orderer and peer deployments
+6. Deploy supporting services
+
+## Manifest Structure
+
+- `00-namespace.yaml`: Creates the MediBlock namespace
+- `01-configmap.yaml`: General application configuration
+- `02-fabric.yaml`: Hyperledger Fabric components (deprecated - use deployment script)
+- `03-ipfs.yaml`: IPFS deployment
+- `04-go-service.yaml`: Go service deployment
+- `05-python-service.yaml`: Python service deployment
+- `06-nextjs-frontend.yaml`: Frontend deployment
+
+## Troubleshooting
+
+If you encounter issues with the deployment, check:
+
+1. Certificate key usage settings
+2. Genesis block mounting
+3. BCCSP configuration
+4. Volume mounts and folder structure
+
+For detailed logs:
+```bash
+kubectl logs -n mediblock <pod-name>
+```
+
+## Cleanup
+
+To clean up all resources:
+```bash
+kubectl delete namespace mediblock
+```
 
 ## Directory Structure
 

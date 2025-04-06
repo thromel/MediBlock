@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: peer0-org1
+  namespace: mediblock
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: peer0-org1
+  template:
+    metadata:
+      labels:
+        app: peer0-org1
+    spec:
+      volumes:
+        - name: empty-dir
+          emptyDir: {}
+        - name: msp-volume
+          configMap:
+            name: peer0-org1-msp
+        - name: msp-secret-volume
+          secret:
+            secretName: peer0-org1-msp-secret
+        - name: config-volume
+          configMap:
+            name: peer-yaml-config
+      initContainers:
+        - name: setup-folders
+          image: busybox
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              mkdir -p /var/hyperledger/production/peer/msp/keystore
+              mkdir -p /var/hyperledger/production/peer/msp/cacerts
+              mkdir -p /var/hyperledger/production/peer/msp/signcerts
+              mkdir -p /var/hyperledger/production/peer/msp/admincerts
+              cp /msp-data/cacerts-ca.crt /var/hyperledger/production/peer/msp/cacerts/ca.crt
+              cp /msp-secret-data/key.pem /var/hyperledger/production/peer/msp/keystore/key.pem
+              cp /msp-data/signcerts-cert.pem /var/hyperledger/production/peer/msp/signcerts/cert.pem
+              cp /msp-data/admincerts-cert.pem /var/hyperledger/production/peer/msp/admincerts/cert.pem
+              chmod -R 777 /var/hyperledger/production
+          volumeMounts:
+            - name: msp-volume
+              mountPath: /msp-data
+            - name: msp-secret-volume
+              mountPath: /msp-secret-data
+            - name: empty-dir
+              mountPath: /var/hyperledger/production
+      containers:
+        - name: peer0-org1
+          image: hyperledger/fabric-peer:2.5.4
+          command: ["peer", "node", "start"]
+          env:
+            - name: CORE_VM_ENDPOINT
+              value: unix:///host/var/run/docker.sock
+            - name: CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE
+              value: mediblock_default
+            - name: FABRIC_LOGGING_SPEC
+              value: info
+            - name: CORE_PEER_TLS_ENABLED
+              value: "false"
+            - name: CORE_PEER_PROFILE_ENABLED
+              value: "false"
+            - name: CORE_PEER_GOSSIP_USELEADERELECTION
+              value: "true"
+            - name: CORE_PEER_GOSSIP_ORGLEADER
+              value: "false"
+            - name: CORE_PEER_GOSSIP_EXTERNALENDPOINT
+              value: peer0-org1:7051
+            - name: CORE_PEER_LOCALMSPID
+              value: MediBlockMSP
+            - name: CORE_PEER_MSPCONFIGPATH
+              value: /var/hyperledger/production/peer/msp
+            - name: CORE_PEER_GOSSIP_BOOTSTRAP
+              value: peer0-org1:7051
+            - name: CORE_PEER_ADDRESS
+              value: peer0-org1:7051
+            - name: CORE_PEER_LISTENADDRESS
+              value: 0.0.0.0:7051
+            - name: CORE_PEER_CHAINCODEADDRESS
+              value: peer0-org1:7052
+            - name: CORE_PEER_CHAINCODELISTENADDRESS
+              value: 0.0.0.0:7052
+            - name: CORE_PEER_ID
+              value: peer0-org1
+            - name: CORE_CHAINCODE_EXECUTETIMEOUT
+              value: "300s"
+            - name: CORE_PEER_BCCSP_DEFAULT
+              value: SW
+            - name: CORE_PEER_BCCSP_SW_HASH
+              value: SHA2
+            - name: CORE_PEER_BCCSP_SW_SECURITY
+              value: "256"
+          ports:
+            - containerPort: 7051
+          volumeMounts:
+            - name: empty-dir
+              mountPath: /var/hyperledger/production
+            - name: config-volume
+              mountPath: /etc/hyperledger/fabric/core.yaml
+              subPath: core.yaml 

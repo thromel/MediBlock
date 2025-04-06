@@ -1,0 +1,32 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orderer
+  namespace: mediblock
+spec:
+  selector:
+    app: orderer
+  ports:
+  - name: orderer-port
+    port: 7050
+    targetPort: 7050
+  - name: operations
+    port: 17050
+    targetPort: 17050
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: peer0-org1
+  namespace: mediblock
+spec:
+  selector:
+    app: peer0-org1
+  ports:
+  - name: peer-port
+    port: 7051
+    targetPort: 7051
+  - name: operations
+    port: 17051
+    targetPort: 17051 

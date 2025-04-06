@@ -111,14 +111,39 @@ If you encounter issues during deployment:
 2. **Fabric Components Don't Start**
    - Check component logs: `kubectl logs -n mediblock deployment/orderer`
    - Verify certificate paths and configuration in the deployed pods
+   - For orderer "CrashLoopBackOff" issues, ensure the genesis block is properly mounted and the folders are created with proper permissions
+   - If the orderer continues to fail, check if all required volumes are mounted correctly in the manifest
 
-3. **Channel Creation Fails**
+3. **Orderer Specific Issues**
+   - If the orderer is in "CrashLoopBackOff" state, check logs: `kubectl logs -n mediblock deployment/orderer`
+   - Common issues include missing genesis block, incorrect volume mounts, or permission problems
+   - Ensure the initContainer properly sets up all required folders and file permissions
+   - Verify that the genesis block is correctly mounted to `/var/hyperledger/fabric/config/genesisblock`
+   - Make sure all required certificates are properly copied to the MSP directory structure
+
+4. **Channel Creation Fails**
    - Examine the channel creator job logs
    - Ensure orderer and peer are fully running before channel creation
+   - Verify that the system channel is properly bootstrapped in the orderer logs
 
-4. **Application Services Issues**
+5. **Application Services Issues**
    - Check individual service logs
    - Verify they can connect to the Fabric network
+
+## Resetting the Deployment
+
+If you need to completely reset the deployment due to persistent issues:
+
+```bash
+# Delete the namespace
+kubectl delete namespace mediblock
+
+# Wait for deletion to complete
+kubectl wait --for=delete namespace/mediblock --timeout=300s
+
+# Redeploy
+./scripts/deploy-mediblock.sh
+```
 
 ## Clean Up
 
@@ -135,9 +160,10 @@ If you need more control over the deployment process, you can run each step indi
 1. Set up namespace: `kubectl apply -f k8s/manifests/00-namespace.yaml`
 2. Create ConfigMap: `kubectl apply -f k8s/manifests/01-configmap.yaml`
 3. Generate certificates: `kubectl apply -f k8s/manifests/01c-fabric-ca-job.yaml`
-4. Deploy Fabric: `kubectl apply -f k8s/manifests/02-fabric.yaml`
-5. Create channel: `./scripts/create-channel.sh`
-6. Deploy services: `kubectl apply -f k8s/manifests/[03-06]*.yaml`
+4. Deploy Fabric: `kubectl apply -f k8s/manifests/components/services.yaml`
+5. Deploy orderer: `kubectl apply -f k8s/manifests/components/orderer.yaml`
+6. Deploy peer: `kubectl apply -f k8s/manifests/components/peer.yaml`
+7. Deploy services: `kubectl apply -f k8s/manifests/[03-06]*.yaml`
 
 ## Next Steps
 

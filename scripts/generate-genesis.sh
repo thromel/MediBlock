@@ -103,9 +103,5 @@ kubectl delete pod kubectl-pod -n mediblock
 # Create configmap for orderer to find the genesis block
 kubectl create configmap orderer-config -n mediblock --from-literal=genesis-file-path=/var/hyperledger/fabric/config/genesisblock --dry-run=client -o yaml | kubectl apply -f -
 
-# Restart required deployments to use the new genesis block
-echo "Restarting orderer deployment..."
-kubectl rollout restart deployment/orderer -n mediblock
-
 echo "Genesis block setup complete."
 echo "Use 'kubectl get pods -n mediblock' to check the status of the pods." 
